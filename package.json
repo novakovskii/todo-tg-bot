@@ -1,0 +1,12 @@
+{
+  "name": "todo-list-tg-bot",
+  "version": "1.0.0",
+  "description": "Telegram Todo List Bot",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0"
+  }
+}
