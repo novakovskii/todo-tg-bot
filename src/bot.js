@@ -12,6 +12,8 @@ const bot = new Bot(token);
 const todos = new Map();
 // messageId -> taskId mapping for reaction handling
 const messageTaskMap = new Map();
+// taskId -> { chatId, messageId } for reverse lookup (delete old messages)
+const taskMessageMap = new Map();
 
 function getTodos(chatId) {
   if (!todos.has(chatId)) todos.set(chatId, []);
@@ -24,7 +26,9 @@ function taskText(task) {
 
 async function sendTaskMessage(chatId, task) {
   const msg = await bot.api.sendMessage(chatId, taskText(task));
-  messageTaskMap.set(`${chatId}_${msg.message_id}`, task.id);
+  const key = `${chatId}_${msg.message_id}`;
+  messageTaskMap.set(key, task.id);
+  taskMessageMap.set(task.id, { chatId, messageId: msg.message_id });
 }
 
 function updateTaskMessage(chatId, messageId, task) {
@@ -34,6 +38,32 @@ function updateTaskMessage(chatId, messageId, task) {
 // /start
 bot.command('start', (ctx) => {
   ctx.reply('Привет! Отправь мне текст — я создам задачу.');
+});
+
+// Forwarded messages — re-send tasks and delete old ones
+bot.on('message:forward_origin', async (ctx) => {
+  const chatId = ctx.chat.id;
+  const list = getTodos(chatId);
+  const fwdText = ctx.message.text;
+  if (!fwdText) return;
+
+  // Find task matching the forwarded text
+  const task = list.find((t) => taskText(t) === fwdText);
+  if (!task) return;
+
+  // Delete the old bot message
+  const old = taskMessageMap.get(task.id);
+  if (old) {
+    const oldKey = `${old.chatId}_${old.messageId}`;
+    messageTaskMap.delete(oldKey);
+    bot.api.deleteMessage(old.chatId, old.messageId).catch(() => {});
+  }
+
+  // Delete the forwarded message
+  ctx.deleteMessage().catch(() => {});
+
+  // Re-send the task (appears at the bottom)
+  await sendTaskMessage(chatId, task);
 });
 
 // Any text message — add task(s), one per line
