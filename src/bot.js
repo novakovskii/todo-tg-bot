@@ -51,7 +51,7 @@ bot.on('message:text', async (ctx) => {
   }
 });
 
-// Reaction: 👍 toggles status, 👌 re-sends (moves to today)
+// Reaction: toggle task
 bot.on('message_reaction', async (ctx) => {
   const chatId = ctx.chat.id;
   const messageId = ctx.messageReaction.message_id;
@@ -65,19 +65,8 @@ bot.on('message_reaction', async (ctx) => {
 
   if (!task) return;
 
-  const newEmojis = ctx.messageReaction.new_reaction
-    .filter((r) => r.type === 'emoji')
-    .map((r) => r.emoji);
-
-  if (newEmojis.includes('👍')) {
-    task.done = !task.done;
-    updateTaskMessage(chatId, messageId, task);
-  } else if (newEmojis.includes('👌')) {
-    messageTaskMap.delete(key);
-    bot.api.deleteMessage(chatId, messageId).catch(() => {});
-    task.done = false;
-    await sendTaskMessage(chatId, task);
-  }
+  task.done = !task.done;
+  updateTaskMessage(chatId, messageId, task);
 });
 
 bot.start({
